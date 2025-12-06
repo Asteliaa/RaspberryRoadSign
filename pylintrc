@@ -1,0 +1,19 @@
+# pylintrc configuration file for Yolo_Raspberry project
+# Suppress known false positives from cv2 and matplotlib
+
+[MASTER]
+disable=
+    missing-module-docstring,
+    C0104,
+    no-member
+
+[VARIABLES]
+allowed-redefined-builtins=bar
+
+[LOGGING]
+logging-format-style=old
+
+[MESSAGES CONTROL]
+disable=
+    logging-fstring-interpolation,
+    no-member

@@ -1,0 +1,90 @@
+# ============================================================================
+# YOLOV11 TRAINING CONFIGURATION
+# Оптимизировано для Raspberry Pi 4B (2GB RAM)
+# ============================================================================
+
+# БАЗОВЫЕ ПАРАМЕТРЫ
+task: detect
+mode: train
+
+# МОДЕЛЬ (nano - самая легкая для Raspberry Pi)
+model: yolo11n.pt  # nano: 2.6M параметров, ~6MB
+# Альтернативы: yolo11s.pt (9M), yolo11m.pt (20M), yolo11l.pt (25M), yolo11x.pt (43M)
+
+# ДАННЫЕ
+data: data.yaml
+
+# ПАРАМЕТРЫ ОБУЧЕНИЯ
+epochs: 15                # Количество эпох (можно уменьшить до 100 для быстрого теста)
+batch: 16                  # Batch size (уменьшите до 8 если не хватает VRAM)
+imgsz: 320                 # Размер изображения (320, 416, 512, 640)
+device: 0                  # 0 для GPU, cpu для CPU
+workers: 8                 # Количество потоков загрузки данных
+cache: false               # Кэширование в RAM (true если хватает памяти)
+
+# ОПТИМИЗАТОР
+optimizer: AdamW           # AdamW, SGD, Adam
+lr0: 0.001                # Начальная learning rate
+lrf: 0.01                 # Финальная learning rate (lr0 * lrf)
+momentum: 0.937           # Momentum для SGD
+weight_decay: 0.0005      # L2 регуляризация
+warmup_epochs: 3.0        # Warm-up эпохи
+warmup_momentum: 0.8      # Momentum во время warm-up
+warmup_bias_lr: 0.1       # Bias learning rate во время warm-up
+
+# LEARNING RATE SCHEDULER
+cos_lr: true              # Cosine learning rate scheduler
+close_mosaic: 10          # Отключить mosaic за N эпох до конца
+
+# АУГМЕНТАЦИИ (для тренировки)
+hsv_h: 0.015             # Hue augmentation (изменение оттенка)
+hsv_s: 0.7               # Saturation augmentation (насыщенность)
+hsv_v: 0.4               # Value augmentation (яркость)
+degrees: 10.0            # Rotation (+/- градусы)
+translate: 0.1           # Translation (+/- доля)
+scale: 0.5               # Scale (+/- gain)
+shear: 0.0               # Shear (+/- градусы)
+perspective: 0.0         # Perspective transformation
+flipud: 0.0              # Vertical flip (обычно 0 для дорожных знаков)
+fliplr: 0.5              # Horizontal flip (50% вероятность)
+mosaic: 1.0              # Mosaic augmentation (4 изображения в одно)
+mixup: 0.0               # Mixup augmentation
+copy_paste: 0.0          # Copy-paste augmentation
+
+# РЕГУЛЯРИЗАЦИЯ
+dropout: 0.0             # Dropout (обычно 0 для малых моделей)
+
+# LOSS ФУНКЦИИ (автоматически оптимизированы)
+box: 7.5                 # Box loss gain
+cls: 0.5                 # Class loss gain
+dfl: 1.5                 # Distribution Focal Loss gain
+
+# СОХРАНЕНИЕ И ЛОГИРОВАНИЕ
+project: runs/train       # Директория для результатов
+name: traffic_signs_v1    # Имя эксперимента
+exist_ok: false          # Перезаписывать существующий эксперимент
+save: true               # Сохранять checkpoints
+save_period: -1          # Сохранять каждые N эпох (-1 = только лучшая)
+plots: true              # Создавать графики
+verbose: true            # Подробный вывод
+
+# ВАЛИДАЦИЯ
+val: true                # Валидация во время обучения
+conf: 0.001              # Confidence threshold для NMS (валидация)
+iou: 0.7                 # IoU threshold для NMS
+
+# РАННЯЯ ОСТАНОВКА
+patience: 50             # Эпох без улучшения до остановки
+
+# ДОПОЛНИТЕЛЬНО
+pretrained: true         # Использовать предобученные веса COCO
+amp: true                # Automatic Mixed Precision (ускорение на GPU)
+fraction: 1.0            # Доля датасета (1.0 = весь датасет)
+profile: false           # Профилирование скорости
+seed: 42                 # Random seed для воспроизводимости
+
+# MULTI-GPU (если есть несколько GPU)
+# device: [0, 1]         # Список GPU
+
+# RESUME TRAINING
+# resume: runs/train/traffic_signs_v1/weights/last.pt

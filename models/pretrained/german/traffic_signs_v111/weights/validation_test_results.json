@@ -1,0 +1,8 @@
+{
+  "model": "runs/train/traffic_signs_v111/weights/best.pt",
+  "split": "test",
+  "map50": 0.9867239524162716,
+  "map50_95": 0.9867239524162719,
+  "precision": 0.9777555538114545,
+  "recall": 0.9791905930117152
+}
