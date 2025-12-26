@@ -1,7 +1,2 @@
-# 🚗 YOLO Traffic Sign Detection
-Russian Traffic Sign Detection using YOLOv11
-## Usage
-- Train: `python scripts/07_train_yoloo.py`
-- Validate: `python scripts/09_validate_model.py`
-- Predict: `python scripts/10_test_predictions.py`
-- Webcam: `python scripts/12_webcam_detection.py`
+Traffic Sign Detection using YOLOv11
+

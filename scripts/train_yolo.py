@@ -1,10 +1,5 @@
-"""
-YOLOv11 training pipeline - Simplified & Config-Driven.
-"""
-
 import argparse
 import json
-import logging
 import os
 import sys
 import time
@@ -19,12 +14,6 @@ import torch
 import yaml
 from ultralytics import YOLO
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-# Project root
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 
@@ -32,22 +21,52 @@ os.chdir(PROJECT_ROOT)
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
+def setup_gpu() -> int:
+    """Setup GPU for training. Returns device ID or -1 for CPU."""
+    print("GPU Setup:")
+
+    if not torch.cuda.is_available():
+        print("  CUDA not available → Using CPU")
+        return -1
+
+    gpu_count = torch.cuda.device_count()
+    device_id = 0
+    gpu_name = torch.cuda.get_device_name(device_id)
+    gpu_memory_gb = torch.cuda.get_device_properties(
+        device_id).total_memory / (1024 ** 3)
+
+    print(f"  Device: {gpu_name} ({gpu_memory_gb:.2f} GB)")
+
+    # Test GPU
+    try:
+        test_tensor = torch.randn(100, 100).to(f"cuda:{device_id}")
+        result = torch.matmul(test_tensor, test_tensor)
+        del test_tensor, result
+        torch.cuda.empty_cache()
+        print(f"  ✓ GPU ready\n")
+    except RuntimeError:
+        print("  ✗ GPU test failed → Using CPU\n")
+        return -1
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
+
+    return device_id
+
+
 def find_config_file(config_path: str | Path) -> Path:
-    """Найти конфиг-файл с умным поиском."""
+    """Find config file with intelligent path resolution"""
     config_path = Path(config_path)
 
-    # Абсолютный путь
     if config_path.is_absolute():
         if config_path.exists():
             return config_path
         raise FileNotFoundError(f"Config not found: {config_path}")
 
-    # Относительно PROJECT_ROOT
     config_relative = PROJECT_ROOT / config_path
     if config_relative.exists():
         return config_relative
 
-    # Стандартные места
     for location in [
         PROJECT_ROOT / "configs" / config_path.name,
         PROJECT_ROOT / "scripts" / config_path.name,
@@ -60,9 +79,8 @@ def find_config_file(config_path: str | Path) -> Path:
 
 
 def load_training_config(config_path: Path | str) -> Dict[str, Any]:
-    """Загрузить конфиг из YAML."""
+    """Load training configuration from YAML file"""
     config_path = find_config_file(config_path)
-    logger.info(f"Loading config: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -71,44 +89,13 @@ def load_training_config(config_path: Path | str) -> Dict[str, Any]:
 
 
 def validate_config(config: Dict[str, Any]) -> bool:
-    """Проверить обязательные параметры в конфиге."""
+    """Validate required configuration parameters"""
     required_keys = ["model", "data", "epochs", "batch"]
-
-    for key in required_keys:
-        if key not in config:
-            logger.error(f"Missing required config key: {key}")
-            return False
-
-    return True
-
-
-def check_environment() -> bool:
-    """Проверить PyTorch, CUDA, GPU."""
-    print("\n" + "=" * 80)
-    print("Environment Check")
-    print("=" * 80)
-
-    print(f"PyTorch version: {torch.__version__}")
-
-    cuda_available = torch.cuda.is_available()
-    print(f"CUDA available: {cuda_available}")
-
-    if cuda_available:
-        print(f"CUDA version: {torch.version.cuda}")
-        print(f"GPU count: {torch.cuda.device_count()}")
-        for idx in range(torch.cuda.device_count()):
-            name = torch.cuda.get_device_name(idx)
-            total_mem = torch.cuda.get_device_properties(idx).total_memory / (1024**3)
-            print(f"  GPU {idx}: {name} ({total_mem:.2f} GB)")
-        torch.cuda.empty_cache()
-    else:
-        logger.warning("CUDA not available - training will be slow on CPU")
-
-    return True
+    return all(key in config for key in required_keys)
 
 
 def check_dataset(config: Dict[str, Any]) -> bool:
-    """Проверить существование датасета."""
+    """Verify dataset structure and availability"""
     data_yaml = config.get("data")
     data_yaml_path = Path(data_yaml)
 
@@ -116,11 +103,9 @@ def check_dataset(config: Dict[str, Any]) -> bool:
         data_yaml_path = PROJECT_ROOT / data_yaml
 
     if not data_yaml_path.exists():
-        logger.error(f"Data config not found: {data_yaml_path}")
-        print(f"❌ Dataset not found: {data_yaml_path}")
+        print(f"✗ Dataset config not found: {data_yaml_path}")
         return False
 
-    # Проверить структуру датасета
     with open(data_yaml_path, "r", encoding="utf-8") as f:
         data_config = yaml.safe_load(f)
 
@@ -128,136 +113,115 @@ def check_dataset(config: Dict[str, Any]) -> bool:
     if not dataset_path.is_absolute():
         dataset_path = PROJECT_ROOT / dataset_path
 
-    print(f"\nDataset Check")
-    print("-" * 80)
-    print(f"Data config: {data_yaml_path}")
-    print(f"Dataset path: {dataset_path}")
-
+    print("Dataset Check:")
     all_valid = True
     for split in ["train", "val"]:
         img_dir = dataset_path / "images" / split
         lbl_dir = dataset_path / "labels" / split
 
         if not img_dir.exists() or not lbl_dir.exists():
-            logger.warning(f"Split missing: {split}")
-            print(f"  {split}: ❌ MISSING")
+            print(f"  ✗ {split}: MISSING")
             all_valid = False
             continue
 
         img_count = len(list(img_dir.glob("*")))
         lbl_count = len(list(lbl_dir.glob("*.txt")))
-        status = "✅" if img_count == lbl_count else "⚠️"
-        print(f"  {split}: {img_count} images, {lbl_count} labels {status}")
+        status = "✓" if img_count == lbl_count else "✗"
+        print(f"  {status} {split}: {img_count} images, {lbl_count} labels")
 
+    print()
     return all_valid
 
 
-def train(config_path: Path | str, resume: bool = False) -> Optional[Any]:
-    """Главная функция обучения."""
-    print("=" * 80)
-    print("YOLOv11 Training - Config-Driven")
-    print("=" * 80)
-    print(f"Working directory: {PROJECT_ROOT}\n")
-
-    # Загрузить конфиг
+def train(
+    config_path: Path | str,
+    device_id: int,
+    resume: bool = False
+) -> Optional[Any]:
+    """Execute model training"""
     try:
         config = load_training_config(config_path)
     except FileNotFoundError as e:
-        logger.error(f"Config error: {e}")
-        print(f"❌ {e}")
+        print(f"✗ Config error: {e}\n")
         return None
 
-    # Валидировать конфиг
     if not validate_config(config):
-        logger.error("Config validation failed")
+        print("✗ Config validation failed\n")
         return None
 
-    # Показать конфиг
-    print("\nConfig loaded:")
-    print("-" * 80)
+    print("Config:")
     for key, value in config.items():
-        # Скрыть большие списки
-        if isinstance(value, dict) and len(str(value)) > 100:
-            print(f"  {key}: <dict with {len(value)} items>")
-        elif isinstance(value, list) and len(str(value)) > 100:
-            print(f"  {key}: <list with {len(value)} items>")
+        if isinstance(value, (dict, list)) and len(str(value)) > 80:
+            print(f"  {key}: <dict/list>")
         else:
             print(f"  {key}: {value}")
+    print()
 
-    # Проверить окружение
-    if not check_environment():
-        logger.error("Environment check failed")
+    if not check_dataset(config):
+        print("⚠ Some dataset splits are missing\n")
+
+    print("Model Initialization:")
+    model_name = config.get("model")
+    print(f"  Loading: {model_name}")
+
+    try:
+        model = YOLO(model_name)
+    except Exception as e:
+        print(f"✗ Model loading failed: {e}\n")
         return None
 
-    # Проверить датасет
-    if not check_dataset(config):
-        logger.warning("Some dataset splits are missing")
-
-    # Инициализировать модель
-    print("\n" + "=" * 80)
-    print("Model Initialization")
-    print("=" * 80)
-
-    model_name = config.get("model")
-    print(f"Loading model: {model_name}")
-    model = YOLO(model_name)
-
-    # Показать информацию о модели
     try:
-        total_params = sum(p.numel() for p in model.model.parameters())
-        trainable_params = sum(
-            p.numel() for p in model.model.parameters() if p.requires_grad
-        )
-        print(f"Total parameters: {total_params:,}")
-        print(f"Trainable parameters: {trainable_params:,}")
-    except Exception as e:
-        logger.debug(f"Could not display model info: {e}")
+        total_params = sum(p.numel() for p in model.model.parameters()) # type: ignore
+        trainable_params = sum(p.numel()
+                               for p in model.model.parameters() if p.requires_grad)
+        print(f"  Total params: {total_params:,}")
+        print(f"  Trainable: {trainable_params:,}\n")
+    except Exception:
+        pass
 
-    # Обучение
-    print("\n" + "=" * 80)
+    print("=" * 60)
     print("Training")
-    print("=" * 80)
+    print("=" * 60)
 
     training_start = time.time()
-    print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Config: {config.get('name', 'unnamed')}")
-    print(f"Epochs: {config.get('epochs')}")
-    print(f"Batch: {config.get('batch')}")
-    print(f"Fraction: {config.get('fraction', 1.0)}")
+    print(f"Epochs: {config.get('epochs')}, Batch: {config.get('batch')}")
+    device_str = f"cuda:{device_id}" if device_id >= 0 else "cpu"
+    print(f"Device: {device_str}\n")
+
+    if device_id >= 0:
+        config['device'] = device_id
 
     try:
-        # ГЛАВНОЕ: Передать весь конфиг в YOLO
-        # Конфиг уже содержит все параметры!
         results = model.train(**config)
 
         training_time = (time.time() - training_start) / 3600
 
-        print("\n" + "=" * 80)
-        print("Training Completed")
-        print("=" * 80)
-        print(f"Duration: {training_time:.2f} hours")
-        print(f"Results: {results.save_dir}")
+        print("\n" + "=" * 60)
+        print("✓ Training Complete")
+        print("=" * 60)
+        print(f"Duration: {training_time:.2f}h")
+        print(f"Results: {results.save_dir}") # type: ignore
+        print(f"Model: {results.save_dir}/weights/best.pt\n") # type: ignore
 
-        # Постобработка
         _save_metrics(config, results, training_time)
         _create_visualizations(results)
 
         return results
 
     except KeyboardInterrupt:
-        logger.warning("Training interrupted by user")
-        print("\n❌ Training interrupted")
+        print("\n✗ Interrupted by user\n")
         return None
 
     except Exception as e:
-        logger.error(f"Training failed: {e}", exc_info=True)
-        print(f"❌ Error: {e}")
+        print(f"\n✗ Training failed: {e}\n")
         traceback.print_exc()
         return None
 
 
 def _save_metrics(config: Dict[str, Any], results: Any, training_time: float) -> None:
-    """Сохранить метрики в JSON."""
+    """Save training metrics to JSON"""
     metrics_file = Path(results.save_dir) / "training_metrics.json"
 
     metrics = {
@@ -271,15 +235,12 @@ def _save_metrics(config: Dict[str, Any], results: Any, training_time: float) ->
     with open(metrics_file, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2, ensure_ascii=False)
 
-    print(f"\nMetrics saved: {metrics_file}")
-
 
 def _create_visualizations(results: Any) -> None:
-    """Создать графики обучения."""
+    """Create training visualization plots"""
     results_csv = Path(results.save_dir) / "results.csv"
 
     if not results_csv.exists():
-        logger.warning("Results CSV not found")
         return
 
     try:
@@ -288,7 +249,6 @@ def _create_visualizations(results: Any) -> None:
 
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
 
-        # Box loss
         if "train/box_loss" in df.columns and "val/box_loss" in df.columns:
             axes[0, 0].plot(df["epoch"], df["train/box_loss"], label="Train")
             axes[0, 0].plot(df["epoch"], df["val/box_loss"], label="Val")
@@ -296,7 +256,6 @@ def _create_visualizations(results: Any) -> None:
             axes[0, 0].legend()
             axes[0, 0].grid(True, alpha=0.3)
 
-        # Classification loss
         if "train/cls_loss" in df.columns and "val/cls_loss" in df.columns:
             axes[0, 1].plot(df["epoch"], df["train/cls_loss"], label="Train")
             axes[0, 1].plot(df["epoch"], df["val/cls_loss"], label="Val")
@@ -304,16 +263,16 @@ def _create_visualizations(results: Any) -> None:
             axes[0, 1].legend()
             axes[0, 1].grid(True, alpha=0.3)
 
-        # mAP
         if "metrics/mAP50(B)" in df.columns:
             axes[1, 0].plot(df["epoch"], df["metrics/mAP50(B)"], color="green")
             axes[1, 0].set_title("mAP@0.5")
             axes[1, 0].grid(True, alpha=0.3)
 
-        # Precision & Recall
         if "metrics/precision(B)" in df.columns:
-            axes[1, 1].plot(df["epoch"], df["metrics/precision(B)"], label="Precision")
-            axes[1, 1].plot(df["epoch"], df["metrics/recall(B)"], label="Recall")
+            axes[1, 1].plot(
+                df["epoch"], df["metrics/precision(B)"], label="Precision")
+            axes[1, 1].plot(
+                df["epoch"], df["metrics/recall(B)"], label="Recall")
             axes[1, 1].set_title("Precision & Recall")
             axes[1, 1].legend()
             axes[1, 1].grid(True, alpha=0.3)
@@ -325,39 +284,21 @@ def _create_visualizations(results: Any) -> None:
         plt.savefig(output_file, dpi=150, bbox_inches="tight")
         plt.close()
 
-        print(f"Saved: {output_file}")
-
-    except Exception as e:
-        logger.error(f"Visualization failed: {e}")
+    except Exception:
+        pass
 
 
 def parse_arguments() -> argparse.Namespace:
-    """Парсить аргументы командной строки."""
+    """Parse command-line arguments"""
     parser = argparse.ArgumentParser(
-        description="YOLOv11 Training - Config-Driven",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Default config
-  python 07_train_yolo.py
-
-  # Custom config
-  python 07_train_yolo.py --config configs/training_config_rtsd.yaml
-
-  # Resume training5
-  python 07_train_yolo.py --config configs/training_config_rtsd.yaml --resume
-
-  # Absolute path
-  python train_yolo.py --config /path/to/config.yaml
-
-All parameters are configured in YAML - edit config file to change anything!
-        """,
+        description="YOLOv11 Training Pipeline",
+        epilog="Example: python train_yolo_gpu.py --config configs/training_nano.yaml"
     )
 
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/training_config_rtsd.yaml",
+        default="configs/training_nano.yaml",
         help="Path to training config YAML",
     )
 
@@ -371,26 +312,25 @@ All parameters are configured in YAML - edit config file to change anything!
 
 
 def main() -> None:
-    """Entry point."""
+    """Entry point"""
+    device_id = setup_gpu()
     args = parse_arguments()
 
     try:
-        results = train(args.config, resume=args.resume)
+        results = train(args.config, device_id=device_id, resume=args.resume)
 
         if results:
-            print("\n" + "=" * 80)
-            print("✅ Training Successful")
-            print("=" * 80)
-            print(f"Results: {results.save_dir}")
-            print(f"Best model: {results.save_dir}/weights/best.pt")
+            print("✓ Training Successful")
+            print(f"  Results: {results.save_dir}")
+            print(
+                f"  Export: python scripts/export_models.py --model {results.save_dir}/weights/best.pt\n")
         else:
-            print("\n" + "=" * 80)
-            print("❌ Training Failed")
-            print("=" * 80)
+            print("✗ Training Failed\n")
+            sys.exit(1)
 
     except Exception as e:
-        logger.error(f"Fatal error: {e}", exc_info=True)
-        raise
+        print(f"✗ Fatal error: {e}\n")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

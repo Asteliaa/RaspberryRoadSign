@@ -1,16 +1,17 @@
-model: yolo11s.pt  # small помощнее но тоже должна подходить
+model: /home/ruslana/Projects/RaspberryYolo/RaspberryRoadSign/runs/rtsd_train/rtsd_yolo11n_pi_other50/weights/last.pt  # small помощнее но тоже должна подходить
 data: datasets/rtsd_yolo/data.yaml  # Путь к файлу с описанием датасета
 
 # Основные параметры 
 epochs: 50  
-batch: 16  
-imgsz: 320  
+batch: 24  
+imgsz: 480  
 device: 0  
-workers: 4  
+workers: 8  
+deterministic: false
 
-optimizer: SGD
-lr0: 0.001 
-lrf: 0.01  
+optimizer: AdamW
+lr0: 0.002 
+lrf: 0.01   
 momentum: 0.937
 weight_decay: 0.0005
 
@@ -47,11 +48,11 @@ cls: 0.5  # Вес Classification Loss — отвечает за правиль�
 dfl: 1.5  # Вес DFL Loss (Distribution Focal Loss) — улучшает качество границ bbox
 
 project: runs/rtsd_train 
-name: rtsd_yolo11s_pi4  
+name: rtsd_yolo11n_pi   
 exist_ok: false  # чтобы не перезаписать 
 
 save: true  # Сохранять checkpoints
-save_period: 10  #   - -1: только best.pt и last.pt
+save_period: 5  #   - -1: только best.pt и last.pt
 
 # Валидация на каждой эпохе
 val: true
@@ -61,10 +62,10 @@ iou: 0.6  # Если два bbox перекрываются более чем н
 cache: false  
 plots: true  # Рисовать графики
 verbose: true  # Подробный вывод в консоль
-patience: 10  # Early Stopping — остановить обучение, если метрики не улучшаются N эпох.
+patience: 15  # Early Stopping — остановить обучение, если метрики не улучшаются N эпох.
 pretrained: true # Использовать предобученные веса (на COCO)
 amp: true  # Automatic Mixed Precision (ускорит обучение)
-fraction: 0.25 # 0.18 = только 18% данных используется, понятно дело нужно 1.0
+fraction: 1.0 # 0.18 = только 18% данных используется, понятно дело нужно 1.0
 profile: false  
 seed: 42  
 
