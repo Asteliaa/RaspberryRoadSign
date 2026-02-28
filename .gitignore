@@ -14,3 +14,6 @@ __pycache__/
 .env
 scripts/validate.py
 data/raw/archive
+
+# Archive folder (legacy/unnecessary files)
+_archive/
