@@ -17,3 +17,4 @@ data/raw/archive
 
 # Archive folder (legacy/unnecessary files)
 _archive/
+datasets/
