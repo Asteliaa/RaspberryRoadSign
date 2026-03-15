@@ -18,3 +18,12 @@ data/raw/archive
 # Archive folder (legacy/unnecessary files)
 _archive/
 datasets/
+pylintrc
+test_models/
+
+# Local personal docs
+README_DETAILED.md
+
+# Local runtime artifacts
+output/
+.venv/

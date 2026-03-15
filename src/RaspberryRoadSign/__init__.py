@@ -5,13 +5,10 @@ __author__ = "RaspberryYolo Team"
 
 from .models.yolo_wrapper import YOLOWrapper
 from .inference.detector import TrafficSignDetector
-from .utils.config import InferenceConfig, TrainingConfig
 from .utils.class_mapping import ClassMapper
 
 __all__ = [
     "YOLOWrapper",
     "TrafficSignDetector",
-    "InferenceConfig",
-    "TrainingConfig",
     "ClassMapper",
 ]
