@@ -1,7 +1,10 @@
 ARG BASE_IMAGE=arm64v8/python:3.11-slim
 FROM ${BASE_IMAGE}
 
-ENV PIP_DEFAULT_TIMEOUT=120
+ENV PIP_DEFAULT_TIMEOUT=1000 \
+    PIP_RETRIES=5 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_REQUIRE_HASHES=0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
@@ -13,16 +16,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip config set global.require-hashes false
+
 RUN pip install --no-cache-dir \
     torch==2.5.1 \
     --index-url https://download.pytorch.org/whl/cpu
 
 RUN pip install --no-cache-dir \
-    ultralytics==8.3.204 \
+    torchvision==0.20.1 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+RUN pip install --no-cache-dir \
     numpy==1.26.4 \
+    scipy==1.17.1 \
+    matplotlib==3.10.8 \
+    requests==2.32.5 \
+    psutil==7.2.2 \
+    polars==1.39.2 \
+    ultralytics-thop==2.0.18 \
     opencv-python-headless==4.10.0.84 \
     Pillow==10.4.0 \
     PyYAML==6.0.2
+
+RUN pip install --no-cache-dir --no-deps \
+    ultralytics==8.3.204
 
 WORKDIR /app
 
