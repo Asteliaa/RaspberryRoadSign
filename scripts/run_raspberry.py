@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Удобный запуск inference без shell-обёртки."""
+"""Запуск inference"""
 
 from __future__ import annotations
 
