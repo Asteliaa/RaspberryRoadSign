@@ -1,34 +1,5 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Dockerfile.raspberry  —  образ для запуска инференса на Raspberry Pi 4B
-#
-# Базовый образ: arm64v8/python:3.11-slim (Debian Bookworm, aarch64)
-# Собирать ТОЛЬКО на самой малине или через buildx с --platform linux/arm64
-#
-# Сборка на малине:
-#   docker build -f docker/Dockerfile.raspberry -t rrs-inference .
-#
-# Запуск (камера):
-#   docker run --rm -it \
-#     --device /dev/video0 \
-#     -v $(pwd)/models/deploy:/models \
-#     -v $(pwd)/output:/output \
-#     rrs-inference
-#
-# Запуск (видеофайл):
-#   docker run --rm -it \
-#     -v $(pwd)/models/deploy:/models \
-#     -v $(pwd)/output:/output \
-#     -v $(pwd)/test_video.mp4:/input/video.mp4 \
-#     rrs-inference --source /input/video.mp4
-# ─────────────────────────────────────────────────────────────────────────────
-
 FROM arm64v8/python:3.11-slim
 
-# Системные зависимости
-# libgomp1      — OpenMP, нужен ultralytics/ncnn
-# libgl1        — OpenCV GUI (можно убрать если --no-display)
-# libglib2.0-0  — нужна opencv-python
-# v4l-utils     — опционально, для диагностики камеры
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libgl1 \
@@ -39,9 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Python зависимости
-# ultralytics --no-deps: НЕ тащим PyTorch (11ч компиляции на ARM!)
-# torch устанавливаем отдельно — CPU-only wheel для aarch64
 RUN pip install --no-cache-dir \
     torch==2.5.1 \
     --index-url https://download.pytorch.org/whl/cpu
@@ -55,14 +23,11 @@ RUN pip install --no-cache-dir \
 
 WORKDIR /app
 
-# Копируем исходный код проекта
 COPY src/ /app/src/
 COPY scripts/main.py /app/scripts/main.py
 
 ENV PYTHONPATH=/app/src
 
-# Точка входа — тот же main.py что и без Docker
-# Аргументы можно переопределить при docker run
 ENTRYPOINT ["python", "scripts/main.py"]
 CMD ["--source", "0", \
      "--model", "/models/best_ncnn_model", \

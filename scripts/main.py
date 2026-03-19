@@ -7,17 +7,44 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 
-DEFAULT_MODEL = (
-    PROJECT_ROOT / "models" / "deploy" / "best.pt"
-    if (PROJECT_ROOT / "models" / "deploy" / "best.pt").exists()
-    else PROJECT_ROOT / "_archive" / "rebuild_2026_03_15" / "runs" / "rtsd_train" / "rtsd_yolo11n_pi_other50" / "weights" / "best.pt"
-)
+def resolve_default_model() -> Path:
+    """Вернуть модель по умолчанию для Raspberry runtime.
+
+    Приоритет:
+    1) NCNN-папка после экспорта (быстрее на RPi)
+    2) Локальные PT-веса
+    3) Архивный fallback
+    """
+    ncnn_dir = PROJECT_ROOT / "models" / "deploy" / "best_ncnn_model"
+    ncnn_param = ncnn_dir / "model.ncnn.param"
+    ncnn_bin = ncnn_dir / "model.ncnn.bin"
+    if ncnn_dir.is_dir() and ncnn_param.exists() and ncnn_bin.exists():
+        return ncnn_dir
+
+    pt_model = PROJECT_ROOT / "models" / "deploy" / "best.pt"
+    if pt_model.exists():
+        return pt_model
+
+    return (
+        PROJECT_ROOT
+        / "_archive"
+        / "rebuild_2026_03_15"
+        / "runs"
+        / "rtsd_train"
+        / "rtsd_yolo11n_pi_other50"
+        / "weights"
+        / "best.pt"
+    )
+
+
+DEFAULT_MODEL = resolve_default_model()
 
 
 def parse_source(source: str) -> int | Path:
@@ -28,7 +55,7 @@ def parse_source(source: str) -> int | Path:
 
 
 def run_camera(
-    detector: TrafficSignDetector,
+    detector: Any,
     source_idx: int,
     output_path: Path,
     show: bool,

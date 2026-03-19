@@ -376,7 +376,7 @@ def main() -> None:
         len(classes),
         args.output_dir,
     )
-    logger.info("   Следующий шаг: загрузить на Camber Stash — см. upload_to_camber.sh")
+    logger.info("   Следующий шаг: загрузить на Camber Stash — см. upload_to_camber.py")
 
 
 if __name__ == "__main__":

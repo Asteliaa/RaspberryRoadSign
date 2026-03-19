@@ -18,8 +18,12 @@ data/raw/archive
 # Archive folder (legacy/unnecessary files)
 _archive/
 datasets/
+docs/
 pylintrc
 test_models/
+training/
+docker/README.md
+docker/Dockerfile.export
 
 # Local personal docs
 README_DETAILED.md

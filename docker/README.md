@@ -1,61 +1,13 @@
-# Docker: Экспорт и деплой на Raspberry Pi
+# Docker: запуск на Raspberry Pi
 
-Два контейнера — два шага:
-
-| Контейнер | Где запускать | Что делает |
-|---|---|---|
-| `Dockerfile.export` | Ноутбук / Camber (x86) | `best.pt` → `best_ncnn_model/` |
-| `Dockerfile.raspberry` | Raspberry Pi 4B (ARM64) | Инференс с камеры / видео |
+Этот документ описывает только runtime на Raspberry Pi.
+Подготовка NCNN-модели выполняется отдельно и считается внутренним шагом.
 
 ---
 
-## Шаг 1 — Экспорт модели (на ноутбуке/x86)
+## Шаг 1 — Запуск на Raspberry Pi 4B
 
-> Экспортировать нужно на x86, не на малине. На ARM NCNN экспорт нестабилен.
-
-### 1.1 Собери образ
-
-```bash
-# Из корня репозитория
-docker build -f docker/Dockerfile.export -t rrs-export .
-```
-
-### 1.2 Запусти экспорт
-
-```bash
-docker run --rm \
-  -v $(pwd)/models/deploy:/models \
-  -v $(pwd)/output_ncnn:/output \
-  rrs-export
-```
-
-Что произойдёт:
-- Загружается `./models/deploy/best.pt`
-- Экспортируется в NCNN с `imgsz=320` (оптимально для RPi 4)
-- Результат сохраняется в `./output_ncnn/best_ncnn_model/`
-
-Внутри `best_ncnn_model/` будут два файла:
-```
-best_ncnn_model/
-  ├── model.ncnn.param   # архитектура (~15 KB)
-  └── model.ncnn.bin     # веса (~5-6 MB)
-```
-
-### 1.3 Скопируй модель на малину
-
-```bash
-# Замени <RASPBERRY_IP> на IP-адрес малины
-scp -r ./output_ncnn/best_ncnn_model \
-    pi@<RASPBERRY_IP>:~/RaspberryRoadSign/models/deploy/
-```
-
-Проверить IP малины: `hostname -I` (выполнить на малине).
-
----
-
-## Шаг 2 — Запуск на Raspberry Pi 4B
-
-### 2.1 Установи Docker на малину (один раз)
+### 1.1 Установи Docker на малину (один раз)
 
 ```bash
 curl -fsSL https://get.docker.com | sh
@@ -64,7 +16,7 @@ sudo usermod -aG docker $USER
 newgrp docker
 ```
 
-### 2.2 Клонируй репозиторий на малину
+### 1.2 Клонируй репозиторий на малину
 
 ```bash
 git clone https://github.com/Asteliaa/RaspberryRoadSign.git
@@ -76,7 +28,7 @@ cd RaspberryRoadSign
 cd ~/RaspberryRoadSign && git pull
 ```
 
-### 2.3 Собери образ (на малине)
+### 1.3 Собери образ (на малине)
 
 ```bash
 # Сборка займёт ~5-10 минут (скачивает wheel для ARM)
@@ -86,7 +38,7 @@ docker build -f docker/Dockerfile.raspberry -t rrs-inference .
 > **Важно:** образ собирается прямо на малине (`arm64v8/python:3.11-slim`).
 > Не пытайся перенести образ с x86 — архитектура не совпадёт.
 
-### 2.4 Запусти инференс
+### 1.4 Запусти инференс
 
 **С USB-камеры или RPi Camera Module:**
 ```bash
@@ -173,8 +125,8 @@ docker build --no-cache -f docker/Dockerfile.raspberry -t rrs-inference .
 
 ```
 docker/
-  Dockerfile.export      # x86: best.pt → NCNN
+  Dockerfile.export      # внутренний файл (подготовка модели, не для конечного пользователя)
   Dockerfile.raspberry   # ARM64: инференс на RPi
-  export_ncnn.py         # скрипт экспорта (запускается внутри Dockerfile.export)
+  export_ncnn.py         # внутренний скрипт экспорта
   README.md              # этот файл
 ```

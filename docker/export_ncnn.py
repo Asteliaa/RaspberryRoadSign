@@ -19,8 +19,9 @@ def main() -> None:
     # Проверяем входной файл
     if not MODEL_IN.exists():
         print(f"[ERROR] Модель не найдена: {MODEL_IN}")
-        print("  Убедись что запускаешь с флагом:")
-        print("  -v $(pwd)/models/deploy:/models")
+        print("  Скрипт нужно запускать внутри Docker-контейнера rrs-export.")
+        print("  Пример запуска из корня проекта:")
+        print("  docker run --rm -v $(pwd)/models/deploy:/models -v $(pwd)/output_ncnn:/output rrs-export")
         sys.exit(1)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

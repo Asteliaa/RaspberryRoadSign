@@ -6,8 +6,8 @@
 camber_finetune/
 ├── remap_rtsd.py              # Конвертация COCO JSON → YOLO + ремаппинг классов
 ├── training_config.yaml       # Конфиг обучения (fine-tuning, L4 GPU)
-├── train.sh                   # Скрипт для Camber (устанавливает deps + запускает yolo)
-├── upload_to_camber.sh        # Загрузка на Camber Stash + запуск job
+├── train.py                   # Скрипт для Camber (устанавливает deps + запускает yolo)
+├── upload_to_camber.py        # Загрузка на Camber Stash + запуск job
 ├── belgium_mapping_data.json  # Маппинг данных (RTSD_ID → BY_code, BY_code → new_id)
 └── class_mapping_updated.py   # Обновлённый class_mapping.py для репозитория
 ```
@@ -56,11 +56,8 @@ camber login
 ## Шаг 3 — Загрузка и запуск
 
 ```bash
-# Отредактируй CAMBER_USERNAME в upload_to_camber.sh
-nano upload_to_camber.sh
-
 # Запусти загрузку и обучение
-bash upload_to_camber.sh
+python upload_to_camber.py --camber-username your_camber_username
 ```
 
 ## Шаг 4 — Мониторинг

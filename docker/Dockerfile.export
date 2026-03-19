@@ -1,19 +1,13 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Dockerfile.export  —  собирает среду для экспорта best.pt → NCNN
-# Запускать на x86/amd64 машине (ноутбук, Camber, любой Linux).
-# Результат: папка best_ncnn_model/ которую копируешь на Raspberry Pi.
-#
+
+# Внутренний файл: экспорт best.pt -> NCNN (для подготовки артефакта)
 # Сборка:
-#   docker build -f docker/Dockerfile.export -t rrs-export .
+#   docker build --network=host -f docker/Dockerfile.export -t rrs-export .
 #
 # Запуск экспорта:
 #   docker run --rm \
 #     -v $(pwd)/models/deploy:/models \
 #     -v $(pwd)/output_ncnn:/output \
 #     rrs-export
-#
-# После запуска в ./output_ncnn/ будет папка best_ncnn_model/
-# ─────────────────────────────────────────────────────────────────────────────
 
 FROM python:3.11-slim
 
@@ -31,23 +25,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем torch CPU-only (нет смысла тащить CUDA для экспорта)
-# Версия зафиксирована — не меняй без необходимости
 RUN pip install --no-cache-dir \
     torch==2.5.1+cpu \
     torchvision==0.20.1+cpu \
     --index-url https://download.pytorch.org/whl/cpu
 
 # Ultralytics — фиксируем версию для стабильности NCNN экспорта
-# 8.3.x — последняя стабильная перед проблемами с arm64 в 8.4.0
 RUN pip install --no-cache-dir \
     ultralytics==8.3.204 \
     onnx==1.17.0 \
     onnxruntime==1.20.1 \
+    ncnn \
     numpy==1.26.4 \
     Pillow==10.4.0 \
     PyYAML==6.0.2 \
     opencv-python-headless==4.10.0.84
-
 WORKDIR /workspace
 
 # Скрипт экспорта

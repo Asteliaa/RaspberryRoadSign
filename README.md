@@ -1,81 +1,116 @@
-# RaspberryRoadSign - покорители дорог
+Raspberry Pi
 
-## Кратенько
+## 1) Что делает
 
-Проект распознаёт дорожные знаки на видео/камере с помощью YOLO
+Проект распознаёт дорожные знаки на камере или видео с помощью YOLO
 
-На выходе:
-- рамки вокруг знаков
-- подписи с кодом знака
-- confidence в процентах
+Результат:
+- рамки вокруг знаков;
+- подпись класса;
+- confidence
 
-## Что нужно перед стартом
+## 2) Быстрый запуск без Docker (Python runtime)
 
-- Raspberry Pi с Python 3.10+;
-- доступ к камере (если запуск с камеры);
-- проект в текущей структуре (скрипты + модель + src).
+Требования:
+- Python 3.11+;
+- Linux/Raspberry Pi;
+- модель в [models/deploy](models/deploy).
 
-## Шаг 1. Установка (2 варианта)
+### 2.1 Установка зависимостей
 
-### Вариант 1 — быстрый (через `.sh`)
+Из корня проекта:
 
-В корне проекта:
+```bash
+python scripts/deploy.py
+```
 
-./scripts/deploy.sh
+### 2.2 Запуск с камеры
 
-Что делает скрипт:
-- создаёт `.venv`,
-- активирует окружение,
-- обновляет `pip`,
-- ставит зависимости из `requirements_raspberry.txt`.
+```bash
+python scripts/run_raspberry.py \
+	--source 0 \
+	--output output/raspberry_output.mp4 \
+	--model models/deploy/best_ncnn_model \
+	--device cpu
+```
 
-### Вариант 2 — ручной (всё по шагам)
+### 2.3 Запуск с видеофайла
 
-В корне проекта:
+```bash
+python scripts/run_raspberry.py \
+	--source input.mp4 \
+	--output output/result.mp4 \
+	--model models/deploy/best_ncnn_model \
+	--device cpu
+```
 
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements_raspberry.txt
+Примечание: если NCNN-папки нет, можно передать `--model models/deploy/best.pt`.
 
-## Шаг 2. Запуск
+## 3) Как запустить Docker-образ на Raspberry Pi
 
-### Вариант A: камера 
+Это отдельный сценарий запуска именно контейнера на малине.
 
-./scripts/run_raspberry.sh 0 output/raspberry_output.mp4 models/deploy/best.pt cpu
+### 3.1 Подготовка на Raspberry Pi
 
-### Вариант B: видеофайл
+1. Установить Docker.
+2. Склонировать проект.
+3. Убедиться, что модель лежит в [models/deploy](models/deploy):
+	 - либо `best_ncnn_model/`;
+	 - либо `best.pt`.
 
-./scripts/run_raspberry.sh input.mp4 output/result.mp4 models/deploy/best.pt cpu
+Примечание: экспорт NCNN в этом README намеренно не описывается (внутренний шаг подготовки артефакта).
 
-Где:
-- первый аргумент — источник (`0` = камера или путь к файлу),
-- второй — путь к выходному видео,
-- третий — путь к модели,
-- четвёртый — устройство (`cpu`/`cuda`/`auto`)
+### 3.2 Сборка образа инференса на Raspberry Pi
 
-## Шаг 3. Что должно получиться
+Из корня проекта на Raspberry Pi:
 
-После завершения:
-- в указанной папке появится видео (`output/raspberry_output.mp4` или другое имя),
-- в консоли будут логи по кадрам и числу детекций,
-- в конце будет итог по обработке
+```bash
+docker build -f docker/Dockerfile.raspberry -t rrs-inference .
+```
 
-## Проверка, что всё живое
+### 3.3 Запуск образа с камерой
 
-python scripts/main.py --help
+```bash
+docker run --rm -it \
+	--device /dev/video0 \
+	-v $(pwd)/models/deploy:/models \
+	-v $(pwd)/output:/output \
+	rrs-inference
+```
 
-Если команда показывает параметры — CLI работает корректно
+### 3.4 Запуск образа с видеофайлом
 
-## Если не запускается
+```bash
+docker run --rm -it \
+	-v $(pwd)/models/deploy:/models \
+	-v $(pwd)/output:/output \
+	-v /абсолютный/путь/к/video.mp4:/input/video.mp4 \
+	rrs-inference --source /input/video.mp4
+```
 
-1) Ошибка по `cv2`/`ultralytics`:
-- повторно выполнить `./scripts/deploy.sh`
+### 3.5 Явно указать модель в контейнере
 
-2) Ошибка "Модель не найдена":
-- проверить наличие [models/deploy/best.pt](models/deploy/best.pt),
-- или передать правильный путь третьим аргументом в `run_raspberry.sh`
+```bash
+docker run --rm -it \
+	--device /dev/video0 \
+	-v $(pwd)/models/deploy:/models \
+	-v $(pwd)/output:/output \
+	rrs-inference \
+	--source 0 \
+	--model /models/best_ncnn_model \
+	--device cpu
+```
 
-3) Камера не читается:
-- проверить индекс (`0`/`1`),
-- проверить доступ к `/dev/video*`
+## 4) Типовые ошибки
+
+1. Ошибка при `docker build`:
+	 - проверь, что команда запускается с build-context `.` в конце.
+
+2. `Модель не найдена`:
+	 - проверь наличие [models/deploy/best_ncnn_model](models/deploy/best_ncnn_model) или [models/deploy/best.pt](models/deploy/best.pt).
+
+3. Камера не открывается:
+	 - проверь `/dev/video*`;
+	 - попробуй другой индекс (`0`, `1`);
+	 - в Docker используй корректный `--device`.
+

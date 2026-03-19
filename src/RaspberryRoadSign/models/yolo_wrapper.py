@@ -27,7 +27,7 @@ class YOLOWrapper:
         """Initialize YOLO model wrapper.
         
         Args:
-            model_path: Path to .pt model weights file
+            model_path: Path to model weights (.pt) or NCNN model directory
             device: Device for inference ('auto', 'cpu', 'cuda', 'mps')
             
         Raises:
@@ -42,7 +42,6 @@ class YOLOWrapper:
         
         try:
             self.model: YOLO = YOLO(str(self.model_path))
-            self.model.to(self.device)
         except Exception as e:
             raise RuntimeError(f"Failed to load model {self.model_path}: {e}") from e
     
@@ -71,6 +70,7 @@ class YOLOWrapper:
             conf=conf,
             imgsz=imgsz,
             iou=iou,
+            device=self.device,
             verbose=verbose
         )
         return results
@@ -101,9 +101,19 @@ class YOLOWrapper:
         Returns:
             Dictionary with model metadata
         """
+        model_type = "unknown"
+        num_params = None
+        try:
+            model_type = self.model.model.__class__.__name__
+            num_params = sum(p.numel() for p in self.model.model.parameters())
+        except Exception:
+            # Для экспортированных форматов (например NCNN) атрибуты torch-модели
+            # могут отсутствовать.
+            pass
+
         return {
             "path": str(self.model_path),
             "device": self.device,
-            "model_type": self.model.model.__class__.__name__,
-            "num_params": sum(p.numel() for p in self.model.model.parameters()),
+            "model_type": model_type,
+            "num_params": num_params,
         }
