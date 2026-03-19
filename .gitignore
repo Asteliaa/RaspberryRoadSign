@@ -24,6 +24,7 @@ test_models/
 training/
 docker/README.md
 docker/Dockerfile.export
+docker/export_ncnn.py
 
 # Local personal docs
 README_DETAILED.md
