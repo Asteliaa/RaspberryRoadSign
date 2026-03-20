@@ -73,11 +73,18 @@ docker build --no-cache --network=host -f docker/Dockerfile.raspberry -t rrs-inf
 ### 3.3 Запуск образа с камерой
 
 ```bash
-docker run --rm -it \
-	--device /dev/video0 \
+docker rm -f roadsign-pi 2>/dev/null || true
+docker run -d \
+	--name roadsign-pi \
+	--network=host \
+	--restart unless-stopped \
+	--ipc=host \
+	--device /dev/video0:/dev/video0 \
 	-v $(pwd)/models/deploy:/models \
 	-v $(pwd)/output:/output \
 	rrs-inference
+
+docker logs -f roadsign-pi
 ```
 
 ### 3.4 Запуск образа с видеофайлом
@@ -121,4 +128,9 @@ docker run --rm -it \
 	 - проверь `/dev/video*` на хосте: `ls /dev/video*`;
 	 - если несколько камер, попробуй другой индекс: `--device /dev/video1`;
 	 - убедись, что используешь флаг `--device` в команде `docker run`.
+
+5. **Контейнер падает с кодом `132` (`Illegal instruction`):**
+	 - пересобери образ строго из [docker/Dockerfile.raspberry](docker/Dockerfile.raspberry);
+	 - не используй сторонние/старые `Dockerfile.raspberry-fixed`;
+	 - пересборка: `docker build --no-cache --network=host -f docker/Dockerfile.raspberry -t rrs-inference .`.
 

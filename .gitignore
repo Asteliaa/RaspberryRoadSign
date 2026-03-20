@@ -25,6 +25,13 @@ training/
 docker/README.md
 docker/Dockerfile.export
 docker/export_ncnn.py
+data/raw/archive/
+data/rtsd_yolo_belarus
+models/finetuned/
+scripts/finetune_yolo.py
+test.py
+yolo11n.pt
+data/
 
 # Local personal docs
 README_DETAILED.md
