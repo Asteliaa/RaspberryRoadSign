@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Detector</title>
+    <style>
+        body { font-family: sans-serif; background: #1e1e1e; color: #fff; text-align: center; margin-top: 50px; }
+        .container { display: inline-block; background: #2d2d2d; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        h1 { margin-bottom: 20px; font-size: 24px; color: #4CAF50; }
+        img { border-radius: 5px; max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Система распознавания дорожных знаков Беларуси</h1>
+        <img src="{{ url_for('video_feed') }}" alt="Видеопоток с камеры">
+    </div>
+</body>
+</html>

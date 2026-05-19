@@ -2,8 +2,6 @@ data/raw/rtsd/
 data/raw/*.jpg
 data/raw/*.jpeg
 data/raw/*.png
-models/*.pt
-models/*.pth
 datasets/rtsd_yolo
 datasets/rtsd_yolo.zip
 __pycache__/
@@ -14,28 +12,10 @@ __pycache__/
 .env
 scripts/validate.py
 data/raw/archive
-
-# Archive folder (legacy/unnecessary files)
-_archive/
-datasets/
-docs/
 pylintrc
-test_models/
-training/
-docker/README.md
-docker/Dockerfile.export
-docker/export_ncnn.py
-data/raw/archive/
-data/rtsd_yolo_belarus
-models/finetuned/
-scripts/finetune_yolo.py
-test.py
 yolo11n.pt
 data/
-
-# Local personal docs
-README_DETAILED.md
-
+videos/
 # Local runtime artifacts
 output/
 .venv/
