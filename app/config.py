@@ -1,38 +1,28 @@
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator
 
-class InferenceConfig(BaseModel):
-    """Конфигурация инференса для Raspberry Pi."""
-    model_path: Path = Field(
-        Path("weights/best.onnx"), 
-        description="Путь к весам ONNX"
-    )
-    conf_threshold: float = Field(
-        0.45, 
-        ge=0.0, 
-        le=1.0, 
-        description="Порог уверенности детекции"
-    )
-    iou_threshold: float = Field(
-        0.45, 
-        ge=0.0, 
-        le=1.0, 
-        description="Порог NMS для перекрывающихся рамок"
-    )
-    imgsz: int = Field(
-        320, 
-        gt=0, 
-        description="Размер кадра для нейросети (320 для Pi 4 / 640 для Pi 5)"
-    )
-    device: str = Field(
-        "cpu", 
-        description="Устройство выполнения (всегда cpu на Малине)"
-    )
+# Автоматически определяем абсолютный путь к папке app/
+BASE_DIR = Path(__file__).resolve().parent
 
-    @field_validator('model_path')
+
+class InferenceConfig(BaseModel):
+    """Конфигурация инференса для Raspberry Pi и ПК."""
+    model_path_1: Path = Field(
+        BASE_DIR / "weights" / "signs.onnx",
+        description="Traffic Sign Detection ONNX"
+    )
+    model_path_2: Path = Field(
+        BASE_DIR / "weights" / "traffic_lights.onnx",
+        description="Traffic Light Detection ONNX"
+    )
+    conf_threshold: float = Field(0.45, ge=0.0, le=1.0)
+    iou_threshold: float = Field(0.45, ge=0.0, le=1.0)
+    imgsz: int = Field(320, gt=0)
+    device: str = Field("cpu")
+
+    @field_validator('model_path_1', 'model_path_2')
     @classmethod
     def validate_model_path(cls, v: Path) -> Path:
-        path = Path(v)
-        if not path.exists():
-            print(f"⚠️ Предупреждение: Файл весов {v} не найден локально. Будет использован fallback.")
-        return path
+        if not v.exists():
+            print(f"Файл модели не найден по пути: {v}")
+        return v

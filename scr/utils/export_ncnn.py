@@ -26,12 +26,12 @@ def main():
         imgsz=320,        
         half=False,       
         simplify=True,    
-        dynamic=False,    # Фиксированный размер кадра 
+        dynamic=False,
         opset=12    
     )
     
     exported_file = Path(exported_path_str)
-    target_file = OUTPUT_DIR / "best.onnx"
+    target_file = OUTPUT_DIR / "signs.onnx"
 
     if target_file.exists():
         os.remove(target_file)

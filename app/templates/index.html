@@ -2,18 +2,91 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sign Detector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Sign Detector</title>
     <style>
-        body { font-family: sans-serif; background: #1e1e1e; color: #fff; text-align: center; margin-top: 50px; }
-        .container { display: inline-block; background: #2d2d2d; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        h1 { margin-bottom: 20px; font-size: 24px; color: #4CAF50; }
-        img { border-radius: 5px; max-width: 100%; height: auto; }
+        body {
+            background-color: #141419;
+            color: #e2e2e8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #4caf50;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .stream-box {
+            display: inline-block;
+            border: 3px solid #3a3a42;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            margin-bottom: 20px;
+        }
+        img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        /* Стили для панели кнопок */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #2a2a35;
+            color: white;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #3a3a45;
+        }
+        /* Стиль нажатой (активной) кнопки */
+        button.active {
+            background-color: #4caf50;
+            color: #141419;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Система распознавания дорожных знаков Беларуси</h1>
-        <img src="{{ url_for('video_feed') }}" alt="Видеопоток с камеры">
+    <h1>Система мониторинга знаков</h1>
+    
+    <div class="stream-box">
+        <img src="/video_feed" width="640" height="480" alt="Прямая трансляция">
     </div>
+
+    <div class="controls">
+        <button id="btn-model1" onclick="switchMode('model1')">Модель 1</button>
+        <button id="btn-both" class="active" onclick="switchMode('both')">Обе модели</button>
+        <button id="btn-model2" onclick="switchMode('model2')">Модель 2</button>
+    </div>
+
+    <script>
+        function switchMode(mode) {
+            fetch('/set_mode/' + mode, { method: 'POST' })
+            .then(response => {
+                if (response.ok) {
+                    // Убираем класс active со всех кнопок
+                    document.querySelectorAll('.controls button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    // Добавляем класс active на нажатую кнопку
+                    document.getElementById('btn-' + mode).classList.add('active');
+                }
+            })
+            .catch(err => console.error('Ошибка переключения:', err));
+        }
+    </script>
 </body>
 </html>
