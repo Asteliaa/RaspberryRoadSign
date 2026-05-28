@@ -16,7 +16,7 @@ class InferenceConfig(BaseModel):
     )
     conf_threshold: float = Field(default=0.45, ge=0.0, le=1.0)
     iou_threshold: float = Field(default=0.45, ge=0.0, le=1.0)
-    imgsz: int = Field(default=320, gt=0)
+    imgsz: int = Field(default=192, gt=0)
     device: str = Field(default="cpu")
 
     @field_validator('model_path_1', 'model_path_2')
