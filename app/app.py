@@ -17,7 +17,7 @@ def get_camera():
     current_os = platform.system()
     if current_os == "Linux":
         cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*'MJPG'))
     else:
         cap = cv2.VideoCapture(0)
 
@@ -32,7 +32,7 @@ def generate_frames():
     time.sleep(1.0)
 
     if not cap.isOpened():
-        print("[ERROR] Камера недоступна!")
+        print("Камера недоступна")
         return
 
     prev_time = 0
@@ -44,19 +44,15 @@ def generate_frames():
             continue
 
         try:
-            # Детектор отрабатывает по выбранному режиму (без Ultralytics!)
             frame = detector.detect_and_draw(frame, mode=current_mode)
 
-            # Считаем FPS
             curr_time = time.time()
             fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
             prev_time = curr_time
 
-            # Рисуем FPS в углу
             cv2.putText(frame, f"FPS: {fps:.1f}", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-            # Кодируем и отправляем
             ret_encode, buffer = cv2.imencode('.jpg', frame)
             if not ret_encode:
                 continue
@@ -65,7 +61,7 @@ def generate_frames():
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
         except Exception as e:
-            print(f"[ERROR] Ошибка в цикле видеопотока: {e}")
+            print(f"Ошибка в цикле видеопотока: {e}")
             continue
 
     cap.release()
